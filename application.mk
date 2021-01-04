@@ -26,9 +26,9 @@ BSP_DIR := $(NM_SDK)/bsp/nm180100evb
 #
 #******************************************************************************
 ifdef DEBUG
-    TARGET   := nmapp-dev
+    TARGET   := sensors-dev
 else
-    TARGET   := nmapp
+    TARGET   := sensors
 endif
 
 #******************************************************************************
@@ -41,6 +41,12 @@ endif
 #   VPATH    += additional_source_path
 #   LIBS     += -ladditional_library
 #******************************************************************************
+INCLUDES += -I$(NM_SDK)/bsp/devices/bmi270
+VPATH    += $(NM_SDK)/bsp/devices/bmi270
+SRC += bmi2.c
+SRC += bmi270.c
+SRC += nm_devices_bmi270.c
+
 
 INCLUDES += -I$(NM_SDK)/platform/console
 
