@@ -17,7 +17,7 @@ LORAMAC   ?= $(shell pwd)/../LoRaMac-node
 # Specify the location of the board support package to be used.
 #
 #******************************************************************************
-BSP_DIR := $(NM_SDK)/bsp/nm180100evb
+BSP_DIR := $(NM_SDK)/bsp/nm180310
 
 #******************************************************************************
 #
@@ -61,3 +61,4 @@ SRC += gpio_service.c
 SRC += iom_service.c
 
 SRC += application.c
+SRC += gas.c
