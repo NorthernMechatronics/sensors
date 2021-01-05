@@ -47,6 +47,10 @@ SRC += bmi2.c
 SRC += bmi270.c
 SRC += nm_devices_bmi270.c
 
+INCLUDES += -I$(NM_SDK)/bsp/devices/bme68x
+VPATH    += $(NM_SDK)/bsp/devices/bme68x
+SRC += bme68x.c
+SRC += nm_devices_bme68x.c
 
 INCLUDES += -I$(NM_SDK)/platform/console
 
