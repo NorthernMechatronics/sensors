@@ -42,12 +42,14 @@
 #include <am_util.h>
 
 #include <FreeRTOS.h>
+#include <queue.h>
 #include <task.h>
 
 #include "console_task.h"
 #include "gpio_service.h"
 #include "iom_service.h"
 
+#include "application.h"
 #include "gas.h"
 
 //*****************************************************************************
@@ -152,7 +154,15 @@ void system_setup(void)
     am_devices_led_array_out(am_bsp_psLEDs, AM_BSP_NUM_LEDS, 0x0);
     am_devices_button_array_init(am_bsp_psButtons, AM_BSP_NUM_BUTTONS);
 
+    am_hal_gpio_pinconfig(AM_BSP_GPIO_LORA_EN, g_AM_HAL_GPIO_OUTPUT);
+    am_hal_gpio_state_write(AM_BSP_GPIO_LORA_EN, AM_HAL_GPIO_OUTPUT_SET);
+
+    am_hal_gpio_pinconfig(AM_BSP_GPIO_SENSORS_EN, g_AM_HAL_GPIO_OUTPUT);
+    am_hal_gpio_state_write(AM_BSP_GPIO_SENSORS_EN, AM_HAL_GPIO_OUTPUT_SET);
+
     am_hal_interrupt_master_enable();
+
+    am_util_stdio_printf_init((am_util_stdio_print_char_t)nm_console_print);
 }
 
 void system_start(void)
@@ -164,8 +174,9 @@ void system_start(void)
     xTaskCreate(nm_iom_task, "IOM", 512, 0, 4, &nm_iom_task_handle);
 
     xTaskCreate(nm_console_task, "Console", 512, 0, 2, &nm_console_task_handle);
-    xTaskCreate(gas_task, "Gas Sensing", 512, 0, 1,
-                &gas_task_handle);
+    xTaskCreate(gas_task, "Gas Sensing", 256, 0, 1, &gas_task_handle);
+    xTaskCreate(application_task, "Alive LED", 256, 0, 1,
+                &application_task_handle);
 
     //
     // Start the scheduler.

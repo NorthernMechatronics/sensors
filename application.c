@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2020, Northern Mechatronics, Inc.
+ * Copyright (c) 2021, Northern Mechatronics, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,12 +42,38 @@
 
 #include "application.h"
 
+#define APPLICATION_LED_PIN          AM_BSP_GPIO_LED1
+#define APPLICATION_LED_TIMER        2
+#define APPLICATION_LED_TIMER_SOURCE AM_HAL_CTIMER_LFRC_32HZ
+#define APPLICATION_LED_TIMER_SEG    AM_HAL_CTIMER_TIMERA
+#define APPLICATION_LED_TIMER_INT    AM_HAL_CTIMER_INT_TIMERA2C0
+#define APPLICATION_LED_PERIOD       32 * 3
+#define APPLICATION_LED_ON_TIME      2
+
 TaskHandle_t application_task_handle;
 
 void application_task(void *pvParameters)
 {
+    am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_LFRC_START, 0);
+
+    am_hal_ctimer_output_config(
+        APPLICATION_LED_TIMER, APPLICATION_LED_TIMER_SEG, APPLICATION_LED_PIN,
+        AM_HAL_CTIMER_OUTPUT_NORMAL, AM_HAL_GPIO_PIN_DRIVESTRENGTH_12MA);
+
+    am_hal_ctimer_config_single(
+        APPLICATION_LED_TIMER, APPLICATION_LED_TIMER_SEG,
+        (AM_HAL_CTIMER_FN_PWM_REPEAT | APPLICATION_LED_TIMER_SOURCE |
+         AM_HAL_CTIMER_INT_ENABLE));
+
+    am_hal_ctimer_period_set(APPLICATION_LED_TIMER, APPLICATION_LED_TIMER_SEG,
+                             APPLICATION_LED_PERIOD,
+                             APPLICATION_LED_PERIOD - APPLICATION_LED_ON_TIME);
+
+    am_hal_ctimer_int_enable(APPLICATION_LED_TIMER_INT);
+    NVIC_EnableIRQ(CTIMER_IRQn);
+
+    am_hal_ctimer_start(APPLICATION_LED_TIMER, APPLICATION_LED_TIMER_SEG);
     while (1) {
-        am_hal_gpio_state_write(10, AM_HAL_GPIO_OUTPUT_TOGGLE);
-        vTaskDelay(500);
+        taskYIELD();
     }
 }
