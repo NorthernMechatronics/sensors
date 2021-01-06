@@ -154,10 +154,12 @@ static void gas_measure()
     if (n_fields && data.status != 0xa0) {
         am_util_stdio_printf("\n\r\n\r");
         am_util_stdio_printf("Temperature:    %.2f C\n\r"
-                             "Pressure:       %.2f Pa\n\r"
+                             "Pressure:       %.2f kPa\n\r"
                              "Humidity:       %.2f %%\n\r"
                              "Gas Resistance: %.2f kOhm\n\r\n\r",
-                             data.temperature, data.pressure, data.humidity,
+                             data.temperature,
+                             data.pressure / 1000,
+                             data.humidity,
                              data.gas_resistance / 1000);
 
         nm_console_print_prompt();

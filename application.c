@@ -41,18 +41,97 @@
 #include <queue.h>
 
 #include "application.h"
+#include "task_message.h"
+
+#define APPLICATION_ADC_BATTERY_SLOT     5
+#define APPLICATION_ADC_TEMPERATURE_SLOT 7
 
 #define APPLICATION_LED_PIN          AM_BSP_GPIO_LED1
 #define APPLICATION_LED_TIMER        2
 #define APPLICATION_LED_TIMER_SOURCE AM_HAL_CTIMER_LFRC_32HZ
 #define APPLICATION_LED_TIMER_SEG    AM_HAL_CTIMER_TIMERA
 #define APPLICATION_LED_TIMER_INT    AM_HAL_CTIMER_INT_TIMERA2C0
-#define APPLICATION_LED_PERIOD       32 * 3
+#define APPLICATION_LED_PERIOD       32 * 5
 #define APPLICATION_LED_ON_TIME      2
 
-TaskHandle_t application_task_handle;
+TaskHandle_t  application_task_handle;
+QueueHandle_t application_task_queue;
 
-void application_task(void *pvParameters)
+static void *   adc_handle;
+static uint16_t adc_battery_code;
+static uint16_t adc_temperature_code;
+
+const static float reference_voltage = 1.5f;
+
+const static am_hal_adc_config_t adc_cfg = {
+    .eClock     = AM_HAL_ADC_CLKSEL_HFRC_DIV2,
+    .ePolarity  = AM_HAL_ADC_TRIGPOL_RISING,
+    .eTrigger   = AM_HAL_ADC_TRIGSEL_SOFTWARE,
+    .eReference = AM_HAL_ADC_REFSEL_INT_1P5,
+    .eClockMode = AM_HAL_ADC_CLKMODE_LOW_POWER,
+    .ePowerMode = AM_HAL_ADC_LPMODE1,
+    .eRepeat    = AM_HAL_ADC_SINGLE_SCAN};
+
+static void application_timer_isr(void);
+
+static void application_adc_setup()
+{
+    am_hal_adc_slot_config_t slot_cfg;
+
+    if (AM_HAL_STATUS_SUCCESS != am_hal_adc_initialize(0, &adc_handle)) {
+        am_util_stdio_printf(
+            "Error - reservation of the ADC instance failed.\n");
+    }
+
+    if (AM_HAL_STATUS_SUCCESS !=
+        am_hal_adc_power_control(adc_handle, AM_HAL_SYSCTRL_WAKE, false)) {
+        am_util_stdio_printf("Error - ADC power on failed.\n");
+    }
+
+    if (am_hal_adc_configure(adc_handle, (am_hal_adc_config_t *)&adc_cfg) !=
+        AM_HAL_STATUS_SUCCESS) {
+        am_util_stdio_printf("Error - configuring ADC failed.\n");
+    }
+
+    slot_cfg.bEnabled       = false;
+    slot_cfg.bWindowCompare = false;
+    slot_cfg.eChannel       = AM_HAL_ADC_SLOT_CHSEL_SE0; // 0
+    slot_cfg.eMeasToAvg     = AM_HAL_ADC_SLOT_AVG_1;     // 0
+    slot_cfg.ePrecisionMode = AM_HAL_ADC_SLOT_14BIT;     // 0
+
+    am_hal_adc_configure_slot(adc_handle, 0, &slot_cfg); // Unused slot
+    am_hal_adc_configure_slot(adc_handle, 1, &slot_cfg); // Unused slot
+    am_hal_adc_configure_slot(adc_handle, 2, &slot_cfg); // Unused slot
+    am_hal_adc_configure_slot(adc_handle, 3, &slot_cfg); // Unused slot
+    am_hal_adc_configure_slot(adc_handle, 4, &slot_cfg); // Unused slot
+    am_hal_adc_configure_slot(adc_handle, 6, &slot_cfg); // Unused slot
+
+    // Battery voltage
+    slot_cfg.bEnabled       = true;
+    slot_cfg.bWindowCompare = true;
+    slot_cfg.eChannel       = AM_HAL_ADC_SLOT_CHSEL_BATT;
+    slot_cfg.eMeasToAvg     = AM_HAL_ADC_SLOT_AVG_1;
+    slot_cfg.ePrecisionMode = AM_HAL_ADC_SLOT_14BIT;
+    am_hal_adc_configure_slot(adc_handle, APPLICATION_ADC_BATTERY_SLOT,
+                              &slot_cfg);
+
+    // Temperature
+    slot_cfg.bEnabled       = true;
+    slot_cfg.bWindowCompare = true;
+    slot_cfg.eChannel       = AM_HAL_ADC_SLOT_CHSEL_TEMP;
+    slot_cfg.eMeasToAvg     = AM_HAL_ADC_SLOT_AVG_1;
+    slot_cfg.ePrecisionMode = AM_HAL_ADC_SLOT_10BIT;
+    am_hal_adc_configure_slot(adc_handle, APPLICATION_ADC_TEMPERATURE_SLOT,
+                              &slot_cfg);
+
+    am_hal_adc_interrupt_enable(adc_handle, AM_HAL_ADC_INT_CNVCMP);
+    NVIC_EnableIRQ(ADC_IRQn);
+    NVIC_SetPriority(ADC_IRQn, NVIC_configKERNEL_INTERRUPT_PRIORITY);
+
+    am_hal_adc_enable(adc_handle);
+}
+
+static void application_timer_setup()
 {
     am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_LFRC_START, 0);
 
@@ -69,11 +148,103 @@ void application_task(void *pvParameters)
                              APPLICATION_LED_PERIOD,
                              APPLICATION_LED_PERIOD - APPLICATION_LED_ON_TIME);
 
+    am_hal_ctimer_int_register(APPLICATION_LED_TIMER_INT,
+                               application_timer_isr);
+    am_hal_ctimer_int_clear(APPLICATION_LED_TIMER_INT);
     am_hal_ctimer_int_enable(APPLICATION_LED_TIMER_INT);
     NVIC_EnableIRQ(CTIMER_IRQn);
 
     am_hal_ctimer_start(APPLICATION_LED_TIMER, APPLICATION_LED_TIMER_SEG);
-    while (1) {
-        taskYIELD();
+}
+
+static void application_adc_convert_sample()
+{
+    float battery_voltage;
+    float temperature_voltage;
+    float temperature;
+
+    battery_voltage =
+        ((float)adc_battery_code) * 3.0f * reference_voltage / (16384.0f);
+    temperature_voltage =
+        ((float)adc_temperature_code) * reference_voltage / (1024.0f * 64.0f);
+
+    float vt[] = {temperature_voltage, 0.0f, -123.456};
+
+    if (AM_HAL_STATUS_SUCCESS ==
+        am_hal_adc_control(adc_handle, AM_HAL_ADC_REQ_TEMP_CELSIUS_GET, vt)) {
+        temperature = vt[1];
     }
+
+    am_util_stdio_printf("\n\r");
+    am_util_stdio_printf("Battery Voltage:     %.2f V (0x%04X)\n\r",
+                         battery_voltage, adc_battery_code);
+    am_util_stdio_printf("Device Temperature: %.2f C (0x%04X)\n\r", temperature,
+                         adc_temperature_code);
+    am_util_stdio_printf("\n\r");
+}
+
+void application_task(void *pvParameters)
+{
+    task_message_t task_message;
+
+    application_task_queue = xQueueCreate(10, sizeof(task_message_t));
+
+    application_adc_setup();
+    application_timer_setup();
+
+    while (1) {
+        if (xQueueReceive(application_task_queue, &task_message,
+                          portMAX_DELAY) == pdPASS) {
+            switch (task_message.ui32Event) {
+            case APPLICATION_EVENT_ADC_CNVCMP:
+                application_adc_convert_sample();
+                break;
+            }
+        }
+    }
+}
+
+void application_timer_isr() { am_hal_adc_sw_trigger(adc_handle); }
+
+void am_adc_isr()
+{
+    uint32_t ui32IntStatus;
+    am_hal_adc_interrupt_status(adc_handle, &ui32IntStatus, true);
+    am_hal_adc_interrupt_clear(adc_handle, ui32IntStatus);
+
+    uint32_t            ui32NumSamples = 1;
+    am_hal_adc_sample_t sample;
+
+    //
+    // Emtpy the FIFO, we'll just look at the last one read.
+    //
+    while (AM_HAL_ADC_FIFO_COUNT(ADC->FIFO)) {
+        ui32NumSamples = 1;
+        am_hal_adc_samples_read(adc_handle, true, NULL, &ui32NumSamples,
+                                &sample);
+
+        //
+        // Determine which slot it came from?
+        //
+        if (sample.ui32Slot == APPLICATION_ADC_BATTERY_SLOT) {
+            //
+            // The returned ADC sample is for the battery voltage divider.
+            //
+            adc_battery_code = AM_HAL_ADC_FIFO_SAMPLE(sample.ui32Sample);
+
+        } else if (sample.ui32Slot == APPLICATION_ADC_TEMPERATURE_SLOT) {
+            //
+            // The returned ADC sample is for the temperature sensor.
+            // We need the integer part in the low 16-bits.
+            //
+            adc_temperature_code = sample.ui32Sample & 0xFFC0;
+        }
+    }
+
+    portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
+    task_message_t task_message;
+
+    task_message.ui32Event = APPLICATION_EVENT_ADC_CNVCMP;
+    xQueueSendFromISR(application_task_queue, &task_message,
+                      &xHigherPriorityTaskWoken);
 }

@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2020, Northern Mechatronics, Inc.
+ * Copyright (c) 2021, Northern Mechatronics, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,10 @@
 #ifndef _APPLICATION_H_
 #define _APPLICATION_H_
 
+#define APPLICATION_EVENT_ADC_CNVCMP 0x01
+
 extern TaskHandle_t application_task_handle;
+extern QueueHandle_t application_task_queue;
 
 extern void application_task(void *pvParameters);
 
