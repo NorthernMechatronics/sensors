@@ -38,5 +38,6 @@ extern TaskHandle_t  imu_task_handle;
 extern QueueHandle_t imu_task_queue;
 
 extern void imu_task(void *pvParameters);
+extern void imu_report();
 
 #endif /* _IMU_H_ */

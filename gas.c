@@ -50,7 +50,7 @@
 
 #define GAS_CLOCK_SOURCE   AM_HAL_CTIMER_LFRC_32HZ
 #define GAS_TIMER_PERIOD   32
-#define GAS_MEASURE_PERIOD GAS_TIMER_PERIOD * 10
+#define GAS_MEASURE_PERIOD GAS_TIMER_PERIOD * 15
 #define GAS_TIMER_SEGMENT  AM_HAL_CTIMER_TIMERA
 #define GAS_TIMER_NUMBER   0
 #define GAS_TIMER_INT      AM_HAL_CTIMER_INT_TIMERA0
@@ -180,7 +180,7 @@ void gas_task(void *pvParameters)
 {
     task_message_t task_message;
 
-    am_util_stdio_printf("\n\rBME680 sensor task started\n\r");
+    am_util_stdio_printf("\n\rBME680 sensor task started\n\r\n\r");
     nm_console_print_prompt();
 
     gas_task_queue = xQueueCreate(10, sizeof(task_message_t));

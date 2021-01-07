@@ -42,6 +42,7 @@
 
 #include "console_task.h"
 #include "gas.h"
+#include "imu.h"
 #include "application.h"
 #include "task_message.h"
 
@@ -205,12 +206,18 @@ void application_report()
     am_util_stdio_printf("\n\r");
     gas_display_measurement();
     am_util_stdio_printf("\n\r");
+    imu_report();
+    am_util_stdio_printf("\n\r");
     nm_console_print_prompt();
 }
 
 void application_task(void *pvParameters)
 {
     task_message_t task_message;
+
+    am_util_stdio_printf("\n\rLoRaWAN Activity Tracker\n\r");
+    am_util_stdio_printf("Press button to display measurement\n\r\n\r");
+    nm_console_print_prompt();
 
     application_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
@@ -225,8 +232,16 @@ void application_task(void *pvParameters)
             case APPLICATION_EVENT_ADC_CNVCMP:
                 application_adc_convert_sample();
                 break;
+
             case APPLICATION_EVENT_REPORT:
+                // button debounce 
+                am_hal_gpio_interrupt_disable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+                vTaskDelay(200);
+
                 application_report();
+
+                am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+                am_hal_gpio_interrupt_enable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
                 break;
             }
         }
@@ -235,8 +250,6 @@ void application_task(void *pvParameters)
 
 void application_button_handler()
 {
-    uint64_t ui64Status;
-
     portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
     task_message_t task_message;
 

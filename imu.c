@@ -43,13 +43,15 @@
 #include <console_task.h>
 #include <task_message.h>
 
-#include "bme68x.h"
 #include "bmi270.h"
+#include "nm_devices_bmi270.h"
 
 #include "imu.h"
 
 TaskHandle_t  imu_task_handle;
 QueueHandle_t imu_task_queue;
+
+static uint32_t total_steps = 0;
 
 static int8_t set_feature_config(struct bmi2_dev *bmi2_dev)
 {
@@ -80,10 +82,14 @@ static int8_t set_feature_config(struct bmi2_dev *bmi2_dev)
     return rslt;
 }
 
+void imu_report()
+{
+    am_util_stdio_printf("Steps Counted:  %d\n\r", total_steps);
+}
 
 void imu_task(void *pvParameters)
 {
-    am_util_stdio_printf("\n\rBMI270 sensor task started\n\r");
+    am_util_stdio_printf("\n\rBMI270 sensor task started\n\r\n\r");
     nm_console_print_prompt();
 
     imu_task_queue = xQueueCreate(10, sizeof(task_message_t));
@@ -114,7 +120,6 @@ void imu_task(void *pvParameters)
     rslt = bmi270_map_feat_int(&sens_int, 1, &bmi2_dev);
     bmi2_error_codes_print_result(rslt);
 
-    uint32_t total_steps = 0;
     while (1) {
         rslt = bmi2_get_int_status(&int_status, &bmi2_dev);
         bmi2_error_codes_print_result(rslt);
