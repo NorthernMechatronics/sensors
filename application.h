@@ -32,11 +32,13 @@
 #ifndef _APPLICATION_H_
 #define _APPLICATION_H_
 
-#define APPLICATION_EVENT_ADC_CNVCMP 0x01
+#define APPLICATION_EVENT_ADC_CNVCMP  0x01
+#define APPLICATION_EVENT_REPORT      0x02
 
 extern TaskHandle_t application_task_handle;
 extern QueueHandle_t application_task_queue;
 
 extern void application_task(void *pvParameters);
+extern void application_display_measurement();
 
 #endif /* _APPLICATION_H_ */

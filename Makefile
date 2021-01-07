@@ -111,6 +111,7 @@ clean:
 	@echo "Cleaning..."
 	$(RM) -f $(OBJS) $(DEPS) $(BUILDDIR)/$(TARGET).a
 	$(RM) -rf $(BUILDDIR)
+	$(MAKE) -C $(BSP_DIR) AMBIQ_SDK=$(AMBIQ_SDK) clean
 
 $(BUILDDIR)/%.d: ;
 

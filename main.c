@@ -51,6 +51,7 @@
 
 #include "application.h"
 #include "gas.h"
+#include "imu.h"
 
 //*****************************************************************************
 //
@@ -173,9 +174,11 @@ void system_start(void)
     xTaskCreate(nm_gpio_task, "GPIO", 512, 0, 4, &nm_gpio_task_handle);
     xTaskCreate(nm_iom_task, "IOM", 512, 0, 4, &nm_iom_task_handle);
 
-    xTaskCreate(nm_console_task, "Console", 512, 0, 2, &nm_console_task_handle);
+    xTaskCreate(nm_console_task, "Console", 512, 0, 3, &nm_console_task_handle);
     xTaskCreate(gas_task, "Gas Sensing", 256, 0, 1, &gas_task_handle);
-    xTaskCreate(application_task, "Alive LED", 256, 0, 1,
+    xTaskCreate(imu_task, "IMU", 256, 0, 1, &imu_task_handle);
+
+    xTaskCreate(application_task, "Alive LED", 256, 0, 2,
                 &application_task_handle);
 
     //

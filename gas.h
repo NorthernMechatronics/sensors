@@ -33,10 +33,12 @@
 #define _GAS_H_
 
 #define GAS_EVENT_MEASURE 0x01
+#define GAS_EVENT_DISPLAY 0x02
 
 extern TaskHandle_t  gas_task_handle;
 extern QueueHandle_t gas_task_queue;
 
 extern void gas_task(void *pvParameters);
+extern void gas_display_measurement();
 
 #endif /* _GAS_H_ */

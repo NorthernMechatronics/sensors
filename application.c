@@ -40,6 +40,8 @@
 #include <FreeRTOS.h>
 #include <queue.h>
 
+#include "console_task.h"
+#include "gas.h"
 #include "application.h"
 #include "task_message.h"
 
@@ -61,6 +63,9 @@ static void *   adc_handle;
 static uint16_t adc_battery_code;
 static uint16_t adc_temperature_code;
 
+static float battery_voltage;
+static float temperature;
+
 const static float reference_voltage = 1.5f;
 
 const static am_hal_adc_config_t adc_cfg = {
@@ -72,6 +77,7 @@ const static am_hal_adc_config_t adc_cfg = {
     .ePowerMode = AM_HAL_ADC_LPMODE1,
     .eRepeat    = AM_HAL_ADC_SINGLE_SCAN};
 
+static void application_button_handler(void);
 static void application_timer_isr(void);
 
 static void application_adc_setup()
@@ -131,6 +137,16 @@ static void application_adc_setup()
     am_hal_adc_enable(adc_handle);
 }
 
+static void application_button_setup()
+{
+    am_hal_gpio_pinconfig(AM_BSP_GPIO_BUTTON0, g_AM_BSP_GPIO_BUTTON0);
+    am_hal_gpio_interrupt_register(AM_BSP_GPIO_BUTTON0, application_button_handler);
+    am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+    am_hal_gpio_interrupt_enable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+    NVIC_EnableIRQ(GPIO_IRQn);
+    NVIC_SetPriority(GPIO_IRQn, NVIC_configKERNEL_INTERRUPT_PRIORITY);
+}
+
 static void application_timer_setup()
 {
     am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_LFRC_START, 0);
@@ -159,9 +175,7 @@ static void application_timer_setup()
 
 static void application_adc_convert_sample()
 {
-    float battery_voltage;
     float temperature_voltage;
-    float temperature;
 
     battery_voltage =
         ((float)adc_battery_code) * 3.0f * reference_voltage / (16384.0f);
@@ -174,13 +188,24 @@ static void application_adc_convert_sample()
         am_hal_adc_control(adc_handle, AM_HAL_ADC_REQ_TEMP_CELSIUS_GET, vt)) {
         temperature = vt[1];
     }
+}
 
-    am_util_stdio_printf("\n\r");
+void application_display_measurement()
+{
     am_util_stdio_printf("Battery Voltage:     %.2f V (0x%04X)\n\r",
                          battery_voltage, adc_battery_code);
     am_util_stdio_printf("Device Temperature: %.2f C (0x%04X)\n\r", temperature,
                          adc_temperature_code);
+}
+
+void application_report()
+{
+    am_util_stdio_printf("\n\r\n\r");
+    application_display_measurement();
     am_util_stdio_printf("\n\r");
+    gas_display_measurement();
+    am_util_stdio_printf("\n\r");
+    nm_console_print_prompt();
 }
 
 void application_task(void *pvParameters)
@@ -190,6 +215,7 @@ void application_task(void *pvParameters)
     application_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
     application_adc_setup();
+    application_button_setup();
     application_timer_setup();
 
     while (1) {
@@ -199,9 +225,24 @@ void application_task(void *pvParameters)
             case APPLICATION_EVENT_ADC_CNVCMP:
                 application_adc_convert_sample();
                 break;
+            case APPLICATION_EVENT_REPORT:
+                application_report();
+                break;
             }
         }
     }
+}
+
+void application_button_handler()
+{
+    uint64_t ui64Status;
+
+    portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
+    task_message_t task_message;
+
+    task_message.ui32Event = APPLICATION_EVENT_REPORT;
+    xQueueSendFromISR(application_task_queue, &task_message,
+                      &xHigherPriorityTaskWoken);
 }
 
 void application_timer_isr() { am_hal_adc_sw_trigger(adc_handle); }

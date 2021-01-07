@@ -62,3 +62,4 @@ SRC += iom_service.c
 
 SRC += application.c
 SRC += gas.c
+SRC += imu.c

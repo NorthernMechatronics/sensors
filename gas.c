@@ -62,6 +62,11 @@ static struct bme68x_dev        bme;
 static struct bme68x_conf       conf;
 static struct bme68x_heatr_conf heatr_conf;
 
+static float temperature;
+static float pressure;
+static float humidity;
+static float gas_resistance;
+
 static void gas_timer_isr()
 {
     portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
@@ -152,25 +157,31 @@ static void gas_measure()
 
     /* Check if rslt == BME68X_OK, report or handle if otherwise */
     if (n_fields && data.status != 0xa0) {
-        am_util_stdio_printf("\n\r\n\r");
-        am_util_stdio_printf("Temperature:    %.2f C\n\r"
-                             "Pressure:       %.2f kPa\n\r"
-                             "Humidity:       %.2f %%\n\r"
-                             "Gas Resistance: %.2f kOhm\n\r\n\r",
-                             data.temperature,
-                             data.pressure / 1000,
-                             data.humidity,
-                             data.gas_resistance / 1000);
-
-        nm_console_print_prompt();
+        temperature = data.temperature;
+        pressure = data.pressure;
+        humidity = data.humidity;
+        gas_resistance = data.gas_resistance;
     }
+}
+
+void gas_display_measurement()
+{
+    am_util_stdio_printf("Temperature:    %.2f C\n\r"
+                         "Pressure:       %.2f kPa\n\r"
+                         "Humidity:       %.2f %%\n\r"
+                         "Gas Resistance: %.2f kOhm\n\r",
+                         temperature,
+                         pressure / 1000,
+                         humidity,
+                         gas_resistance / 1000);
 }
 
 void gas_task(void *pvParameters)
 {
     task_message_t task_message;
 
-    am_util_stdio_printf("BME680 sensor task started\n\r");
+    am_util_stdio_printf("\n\rBME680 sensor task started\n\r");
+    nm_console_print_prompt();
 
     gas_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
