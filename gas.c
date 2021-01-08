@@ -50,7 +50,7 @@
 
 #define GAS_CLOCK_SOURCE   AM_HAL_CTIMER_LFRC_32HZ
 #define GAS_TIMER_PERIOD   32
-#define GAS_MEASURE_PERIOD GAS_TIMER_PERIOD * 15
+#define GAS_MEASURE_PERIOD GAS_TIMER_PERIOD * 6
 #define GAS_TIMER_SEGMENT  AM_HAL_CTIMER_TIMERA
 #define GAS_TIMER_NUMBER   0
 #define GAS_TIMER_INT      AM_HAL_CTIMER_INT_TIMERA0
@@ -161,6 +161,15 @@ static void gas_measure()
         pressure = data.pressure;
         humidity = data.humidity;
         gas_resistance = data.gas_resistance;
+
+        if (gas_resistance < 16000)
+        {
+            am_hal_gpio_state_write(AM_BSP_GPIO_LED0, AM_HAL_GPIO_OUTPUT_CLEAR);
+        }
+        else
+        {
+            am_hal_gpio_state_write(AM_BSP_GPIO_LED0, AM_HAL_GPIO_OUTPUT_SET);
+        }
     }
 }
 

@@ -152,7 +152,7 @@ void system_setup(void)
     // Initialize any board specific peripherals
     //
     am_devices_led_array_init(am_bsp_psLEDs, AM_BSP_NUM_LEDS);
-    am_devices_led_array_out(am_bsp_psLEDs, AM_BSP_NUM_LEDS, 0x0);
+    am_devices_led_array_out(am_bsp_psLEDs, AM_BSP_NUM_LEDS, 0x03);
     am_devices_button_array_init(am_bsp_psButtons, AM_BSP_NUM_BUTTONS);
 
     am_hal_gpio_pinconfig(AM_BSP_GPIO_LORA_EN, g_AM_HAL_GPIO_OUTPUT);

@@ -55,7 +55,7 @@
 #define APPLICATION_LED_TIMER_SEG    AM_HAL_CTIMER_TIMERA
 #define APPLICATION_LED_TIMER_INT    AM_HAL_CTIMER_INT_TIMERA2C0
 #define APPLICATION_LED_PERIOD       32 * 5
-#define APPLICATION_LED_ON_TIME      2
+#define APPLICATION_LED_ON_TIME      1
 
 TaskHandle_t  application_task_handle;
 QueueHandle_t application_task_queue;
@@ -193,9 +193,9 @@ static void application_adc_convert_sample()
 
 void application_display_measurement()
 {
-    am_util_stdio_printf("Battery Voltage:     %.2f V (0x%04X)\n\r",
+    am_util_stdio_printf("Battery Voltage: %.2f V (0x%04X)\n\r",
                          battery_voltage, adc_battery_code);
-    am_util_stdio_printf("Device Temperature: %.2f C (0x%04X)\n\r", temperature,
+    am_util_stdio_printf("Die Temperature: %.2f C (0x%04X)\n\r", temperature,
                          adc_temperature_code);
 }
 
