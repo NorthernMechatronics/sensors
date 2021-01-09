@@ -88,9 +88,6 @@ void imu_report()
 
 void imu_task(void *pvParameters)
 {
-    am_util_stdio_printf("\n\rBMI270 sensor task started\n\r\n\r");
-    nm_console_print_prompt();
-
     imu_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
     struct bmi2_dev         bmi2_dev;
@@ -105,33 +102,24 @@ void imu_task(void *pvParameters)
     sensor_data.type = BMI2_STEP_COUNTER;
 
     rslt = bmi2_interface_init(&bmi2_dev, BMI2_SPI_INTF);
-    bmi2_error_codes_print_result(rslt);
-
     rslt = bmi270_init(&bmi2_dev);
-    bmi2_error_codes_print_result(rslt);
-
     rslt = bmi270_sensor_enable(sensor_sel, 2, &bmi2_dev);
-    bmi2_error_codes_print_result(rslt);
 
     /* Set the feature configuration for step counter. */
     rslt = set_feature_config(&bmi2_dev);
-    bmi2_error_codes_print_result(rslt);
 
     /* Map the step counter feature interrupt. */
     rslt = bmi270_map_feat_int(&sens_int, 1, &bmi2_dev);
-    bmi2_error_codes_print_result(rslt);
 
     while (1) {
         rslt = bmi2_get_int_status(&int_status, &bmi2_dev);
-        bmi2_error_codes_print_result(rslt);
 
         /* To check the interrupt status of the step counter. */
         if (int_status & BMI270_STEP_CNT_STATUS_MASK) {
             /* Get step counter output. */
             rslt = bmi270_get_sensor_data(&sensor_data, 1, &bmi2_dev);
-            bmi2_error_codes_print_result(rslt);
             total_steps = sensor_data.sens_data.step_counter_output;
         }
-        vTaskDelay(5000);
+        vTaskDelay(1000);
     }
 }
