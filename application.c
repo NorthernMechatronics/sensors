@@ -46,6 +46,8 @@
 #include "application.h"
 #include "task_message.h"
 
+#define DEBOUNCE_DELAY  100
+
 #define APPLICATION_ADC_BATTERY_SLOT     5
 #define APPLICATION_ADC_TEMPERATURE_SLOT 7
 
@@ -59,6 +61,8 @@
 
 TaskHandle_t  application_task_handle;
 QueueHandle_t application_task_queue;
+
+static uint32_t debouncing = 0;
 
 static void *   adc_handle;
 static uint16_t adc_battery_code;
@@ -234,14 +238,9 @@ void application_task(void *pvParameters)
                 break;
 
             case APPLICATION_EVENT_REPORT:
-                // button debounce 
-                am_hal_gpio_interrupt_disable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
-                vTaskDelay(200);
-
                 application_report();
-
-                am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
-                am_hal_gpio_interrupt_enable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+                vTaskDelay(DEBOUNCE_DELAY);
+                debouncing = 0;
                 break;
             }
         }
@@ -253,9 +252,13 @@ void application_button_handler()
     portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
     task_message_t task_message;
 
-    task_message.ui32Event = APPLICATION_EVENT_REPORT;
-    xQueueSendFromISR(application_task_queue, &task_message,
-                      &xHigherPriorityTaskWoken);
+    if (!debouncing)
+    {
+    	debouncing = 1;
+		task_message.ui32Event = APPLICATION_EVENT_REPORT;
+		xQueueSendFromISR(application_task_queue, &task_message,
+						  &xHigherPriorityTaskWoken);
+    }
 }
 
 void application_timer_isr() { am_hal_adc_sw_trigger(adc_handle); }
