@@ -162,8 +162,6 @@ void system_setup(void)
     am_hal_gpio_state_write(AM_BSP_GPIO_SENSORS_EN, AM_HAL_GPIO_OUTPUT_SET);
 
     am_hal_interrupt_master_enable();
-
-    am_util_stdio_printf_init((am_util_stdio_print_char_t)nm_console_print);
 }
 
 void system_start(void)
@@ -174,11 +172,11 @@ void system_start(void)
     xTaskCreate(nm_gpio_task, "GPIO", 512, 0, 4, &nm_gpio_task_handle);
     xTaskCreate(nm_iom_task, "IOM", 512, 0, 4, &nm_iom_task_handle);
 
-    xTaskCreate(nm_console_task, "Console", 512, 0, 3, &nm_console_task_handle);
+    xTaskCreate(nm_console_task, "Console", 512, 0, 1, &nm_console_task_handle);
     xTaskCreate(gas_task, "Gas Sensing", 256, 0, 1, &gas_task_handle);
     xTaskCreate(imu_task, "IMU", 256, 0, 1, &imu_task_handle);
 
-    xTaskCreate(application_task, "Alive LED", 256, 0, 2,
+    xTaskCreate(application_task, "Alive LED", 256, 0, 1,
                 &application_task_handle);
 
     //
