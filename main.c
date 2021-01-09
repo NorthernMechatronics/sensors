@@ -73,7 +73,10 @@ uint32_t am_freertos_sleep(uint32_t idleTime)
 // Do necessary 'wakeup' operations here, e.g. to power up/enable peripherals etc.
 //
 //*****************************************************************************
-void am_freertos_wakeup(uint32_t idleTime) { return; }
+void am_freertos_wakeup(uint32_t idleTime)
+{
+    return;
+}
 
 void am_gpio_isr(void)
 {

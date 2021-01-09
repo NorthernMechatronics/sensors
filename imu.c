@@ -68,8 +68,7 @@ static int8_t set_feature_config(struct bmi2_dev *bmi2_dev)
     rslt = bmi270_get_sensor_config(&config, 1, bmi2_dev);
     bmi2_error_codes_print_result(rslt);
 
-    if (rslt == BMI2_OK)
-    {
+    if (rslt == BMI2_OK) {
         /* Setting water-mark level to 1 for step counter to get interrupt after 20 step counts. Every 20 steps once
          * output triggers. */
         config.cfg.step_counter.watermark_level = 1;
@@ -94,12 +93,14 @@ void imu_task(void *pvParameters)
 
     imu_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
-    struct bmi2_dev bmi2_dev;
+    struct bmi2_dev         bmi2_dev;
     struct bmi2_sensor_data sensor_data;
-    int8_t rslt;
-    uint8_t sensor_sel[2] = { BMI2_ACCEL, BMI2_STEP_COUNTER };
-    uint16_t int_status = 0;
-    struct bmi2_sens_int_config sens_int = { .type = BMI2_STEP_COUNTER, .hw_int_pin = BMI2_INT2 };
+    int8_t                  rslt;
+    uint8_t                 sensor_sel[2] = {BMI2_ACCEL, BMI2_STEP_COUNTER};
+    uint16_t                int_status    = 0;
+
+    struct bmi2_sens_int_config sens_int = {.type       = BMI2_STEP_COUNTER,
+                                            .hw_int_pin = BMI2_INT2};
 
     sensor_data.type = BMI2_STEP_COUNTER;
 
@@ -125,8 +126,7 @@ void imu_task(void *pvParameters)
         bmi2_error_codes_print_result(rslt);
 
         /* To check the interrupt status of the step counter. */
-        if (int_status & BMI270_STEP_CNT_STATUS_MASK)
-        {
+        if (int_status & BMI270_STEP_CNT_STATUS_MASK) {
             /* Get step counter output. */
             rslt = bmi270_get_sensor_data(&sensor_data, 1, &bmi2_dev);
             bmi2_error_codes_print_result(rslt);

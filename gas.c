@@ -157,17 +157,14 @@ static void gas_measure()
 
     /* Check if rslt == BME68X_OK, report or handle if otherwise */
     if (n_fields && data.status != 0xa0) {
-        temperature = data.temperature;
-        pressure = data.pressure;
-        humidity = data.humidity;
+        temperature    = data.temperature;
+        pressure       = data.pressure;
+        humidity       = data.humidity;
         gas_resistance = data.gas_resistance;
 
-        if (gas_resistance < 16000)
-        {
+        if (gas_resistance < 16000) {
             am_hal_gpio_state_write(AM_BSP_GPIO_LED0, AM_HAL_GPIO_OUTPUT_CLEAR);
-        }
-        else
-        {
+        } else {
             am_hal_gpio_state_write(AM_BSP_GPIO_LED0, AM_HAL_GPIO_OUTPUT_SET);
         }
     }
@@ -179,9 +176,7 @@ void gas_display_measurement()
                          "Pressure:       %.2f kPa\n\r"
                          "Humidity:       %.2f %%\n\r"
                          "Gas Resistance: %.2f kOhm\n\r",
-                         temperature,
-                         pressure / 1000,
-                         humidity,
+                         temperature, pressure / 1000, humidity,
                          gas_resistance / 1000);
 }
 

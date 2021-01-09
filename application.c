@@ -40,13 +40,13 @@
 #include <FreeRTOS.h>
 #include <queue.h>
 
+#include "application.h"
 #include "console_task.h"
 #include "gas.h"
 #include "imu.h"
-#include "application.h"
 #include "task_message.h"
 
-#define DEBOUNCE_DELAY  100
+#define DEBOUNCE_DELAY 100
 
 #define APPLICATION_ADC_BATTERY_SLOT     5
 #define APPLICATION_ADC_TEMPERATURE_SLOT 7
@@ -145,7 +145,8 @@ static void application_adc_setup()
 static void application_button_setup()
 {
     am_hal_gpio_pinconfig(AM_BSP_GPIO_BUTTON0, g_AM_BSP_GPIO_BUTTON0);
-    am_hal_gpio_interrupt_register(AM_BSP_GPIO_BUTTON0, application_button_handler);
+    am_hal_gpio_interrupt_register(AM_BSP_GPIO_BUTTON0,
+                                   application_button_handler);
     am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
     am_hal_gpio_interrupt_enable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
     NVIC_EnableIRQ(GPIO_IRQn);
@@ -252,16 +253,18 @@ void application_button_handler()
     portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
     task_message_t task_message;
 
-    if (!debouncing)
-    {
-    	debouncing = 1;
-		task_message.ui32Event = APPLICATION_EVENT_REPORT;
-		xQueueSendFromISR(application_task_queue, &task_message,
-						  &xHigherPriorityTaskWoken);
+    if (!debouncing) {
+        debouncing             = 1;
+        task_message.ui32Event = APPLICATION_EVENT_REPORT;
+        xQueueSendFromISR(application_task_queue, &task_message,
+                          &xHigherPriorityTaskWoken);
     }
 }
 
-void application_timer_isr() { am_hal_adc_sw_trigger(adc_handle); }
+void application_timer_isr()
+{
+    am_hal_adc_sw_trigger(adc_handle);
+}
 
 void am_adc_isr()
 {
