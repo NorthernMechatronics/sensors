@@ -46,7 +46,7 @@
 #include "imu.h"
 #include "task_message.h"
 
-#define DEBOUNCE_DELAY 100
+#define DEBOUNCE_DELAY 200
 
 #define APPLICATION_ADC_BATTERY_SLOT     5
 #define APPLICATION_ADC_TEMPERATURE_SLOT 7
@@ -61,8 +61,6 @@
 
 TaskHandle_t  application_task_handle;
 QueueHandle_t application_task_queue;
-
-static uint32_t debouncing = 0;
 
 static void *   adc_handle;
 static uint16_t adc_battery_code;
@@ -85,24 +83,13 @@ const static am_hal_adc_config_t adc_cfg = {
 static void application_button_handler(void);
 static void application_timer_isr(void);
 
-static void application_adc_setup()
+static void application_adc_init()
 {
     am_hal_adc_slot_config_t slot_cfg;
 
-    if (AM_HAL_STATUS_SUCCESS != am_hal_adc_initialize(0, &adc_handle)) {
-        am_util_stdio_printf(
-            "Error - reservation of the ADC instance failed.\n");
-    }
-
-    if (AM_HAL_STATUS_SUCCESS !=
-        am_hal_adc_power_control(adc_handle, AM_HAL_SYSCTRL_WAKE, false)) {
-        am_util_stdio_printf("Error - ADC power on failed.\n");
-    }
-
-    if (am_hal_adc_configure(adc_handle, (am_hal_adc_config_t *)&adc_cfg) !=
-        AM_HAL_STATUS_SUCCESS) {
-        am_util_stdio_printf("Error - configuring ADC failed.\n");
-    }
+    am_hal_adc_initialize(0, &adc_handle);
+    am_hal_adc_power_control(adc_handle, AM_HAL_SYSCTRL_WAKE, false);
+    am_hal_adc_configure(adc_handle, (am_hal_adc_config_t *)&adc_cfg);
 
     slot_cfg.bEnabled       = false;
     slot_cfg.bWindowCompare = false;
@@ -140,6 +127,13 @@ static void application_adc_setup()
     NVIC_SetPriority(ADC_IRQn, NVIC_configKERNEL_INTERRUPT_PRIORITY);
 
     am_hal_adc_enable(adc_handle);
+}
+
+void application_adc_deinit()
+{
+	am_hal_adc_disable(adc_handle);
+	am_hal_pwrctrl_periph_disable(AM_HAL_PWRCTRL_PERIPH_ADC);
+    am_hal_adc_deinitialize(adc_handle);
 }
 
 static void application_button_setup()
@@ -226,7 +220,7 @@ void application_task(void *pvParameters)
 
     application_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
-    application_adc_setup();
+    application_adc_init();
     application_button_setup();
     application_timer_setup();
 
@@ -240,8 +234,10 @@ void application_task(void *pvParameters)
 
             case APPLICATION_EVENT_REPORT:
                 application_report();
+
                 vTaskDelay(DEBOUNCE_DELAY);
-                debouncing = 0;
+                am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+                am_hal_gpio_interrupt_enable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
                 break;
             }
         }
@@ -253,16 +249,15 @@ void application_button_handler()
     portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
     task_message_t task_message;
 
-    if (!debouncing) {
-        debouncing             = 1;
-        task_message.ui32Event = APPLICATION_EVENT_REPORT;
-        xQueueSendFromISR(application_task_queue, &task_message,
-                          &xHigherPriorityTaskWoken);
-    }
+	am_hal_gpio_interrupt_disable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+	task_message.ui32Event = APPLICATION_EVENT_REPORT;
+	xQueueSendFromISR(application_task_queue, &task_message,
+					  &xHigherPriorityTaskWoken);
 }
 
 void application_timer_isr()
 {
+	application_adc_init();
     am_hal_adc_sw_trigger(adc_handle);
 }
 
@@ -300,6 +295,7 @@ void am_adc_isr()
             adc_temperature_code = sample.ui32Sample & 0xFFC0;
         }
     }
+    application_adc_deinit();
 
     portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
     task_message_t task_message;
