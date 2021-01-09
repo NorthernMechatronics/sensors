@@ -200,23 +200,27 @@ void application_display_measurement()
 
 void application_report()
 {
-    am_util_stdio_printf("\n\r\n\r");
+	am_bsp_buffered_uart_printf_enable();
+
+	am_util_stdio_printf("\n\r\n\r");
     application_display_measurement();
     am_util_stdio_printf("\n\r");
     gas_display_measurement();
     am_util_stdio_printf("\n\r");
     imu_report();
     am_util_stdio_printf("\n\r");
-    nm_console_print_prompt();
+
+    am_bsp_uart_printf_disable();
 }
 
 void application_task(void *pvParameters)
 {
     task_message_t task_message;
 
+    am_bsp_buffered_uart_printf_enable();
     am_util_stdio_printf("\n\rLoRaWAN Activity Tracker\n\r");
     am_util_stdio_printf("Press button to display measurement\n\r\n\r");
-    nm_console_print_prompt();
+    am_bsp_uart_printf_disable();
 
     application_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
