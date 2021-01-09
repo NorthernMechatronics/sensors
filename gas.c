@@ -113,10 +113,8 @@ static void gas_sensor_setup()
      * For SPI : BME68X_SPI_INTF
      */
     rslt = bme68x_interface_init(&bme, BME68X_I2C_INTF);
-    bme68x_check_rslt("bme68x_interface_init", rslt);
 
     rslt = bme68x_init(&bme);
-    bme68x_check_rslt("bme68x_init", rslt);
 
     /* Check if rslt == BME68X_OK, report or handle if otherwise */
     conf.filter  = BME68X_FILTER_OFF;
@@ -125,14 +123,12 @@ static void gas_sensor_setup()
     conf.os_pres = BME68X_OS_1X;
     conf.os_temp = BME68X_OS_2X;
     rslt         = bme68x_set_conf(&conf, &bme);
-    bme68x_check_rslt("bme68x_set_conf", rslt);
 
     /* Check if rslt == BME68X_OK, report or handle if otherwise */
     heatr_conf.enable     = BME68X_ENABLE;
     heatr_conf.heatr_temp = 300;
     heatr_conf.heatr_dur  = 100;
     rslt = bme68x_set_heatr_conf(BME68X_FORCED_MODE, &heatr_conf, &bme);
-    bme68x_check_rslt("bme68x_set_heatr_conf", rslt);
 }
 
 static void gas_measure()
@@ -142,7 +138,6 @@ static void gas_measure()
     uint8_t            n_fields;
 
     rslt = bme68x_set_op_mode(BME68X_FORCED_MODE, &bme);
-    bme68x_check_rslt("bme68x_set_op_mode", rslt);
 
     /* Check if rslt == BME68X_OK, report or handle if otherwise */
     uint16_t del_period =
@@ -153,7 +148,6 @@ static void gas_measure()
     vTaskDelay(del_period);
 
     rslt = bme68x_get_data(BME68X_FORCED_MODE, &data, &n_fields, &bme);
-    bme68x_check_rslt("bme68x_get_data", rslt);
 
     /* Check if rslt == BME68X_OK, report or handle if otherwise */
     if (n_fields && data.status != 0xa0) {
@@ -183,9 +177,6 @@ void gas_display_measurement()
 void gas_task(void *pvParameters)
 {
     task_message_t task_message;
-
-    am_util_stdio_printf("\n\rBME680 sensor task started\n\r\n\r");
-    nm_console_print_prompt();
 
     gas_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
