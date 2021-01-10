@@ -41,20 +41,30 @@ endif
 #   VPATH    += additional_source_path
 #   LIBS     += -ladditional_library
 #******************************************************************************
+DEFINES += -DSOFT_SE
+
 INCLUDES += -I$(NM_SDK)/bsp/devices/bmi270
+INCLUDES += -I$(NM_SDK)/bsp/devices/bme68x
+INCLUDES += -I$(NM_SDK)/platform/console
+INCLUDES += -I./soft-se
+
 VPATH    += $(NM_SDK)/bsp/devices/bmi270
+VPATH    += $(NM_SDK)/bsp/devices/bme68x
+VPATH += $(NM_SDK)/platform/console
+VPATH    += ./soft-se
+
+
 SRC += bmi2.c
 SRC += bmi270.c
 SRC += nm_devices_bmi270.c
 
-INCLUDES += -I$(NM_SDK)/bsp/devices/bme68x
-VPATH    += $(NM_SDK)/bsp/devices/bme68x
 SRC += bme68x.c
 SRC += nm_devices_bme68x.c
 
-INCLUDES += -I$(NM_SDK)/platform/console
-
-VPATH += $(NM_SDK)/platform/console
+SRC += aes.c
+SRC += cmac.c
+SRC += soft-se.c
+SRC += soft-se-hal.c
 
 SRC += console_task.c
 SRC += gpio_service.c
