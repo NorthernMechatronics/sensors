@@ -49,6 +49,7 @@
 #include "gpio_service.h"
 #include "iom_service.h"
 
+#include "lorawan.h"
 #include "application.h"
 #include "gas.h"
 #include "imu.h"
@@ -176,6 +177,7 @@ void system_start(void)
     xTaskCreate(nm_iom_task, "IOM", 512, 0, 4, &nm_iom_task_handle);
 
     xTaskCreate(nm_console_task, "Console", 512, 0, 1, &nm_console_task_handle);
+    xTaskCreate(lorawan_task, "LoRaWAN", 512, 0, 1, &lorawan_task_handle);
     xTaskCreate(gas_task, "Gas Sensing", 256, 0, 1, &gas_task_handle);
     xTaskCreate(imu_task, "IMU", 256, 0, 1, &imu_task_handle);
 

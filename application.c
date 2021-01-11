@@ -210,7 +210,7 @@ void application_report()
     imu_report();
     am_util_stdio_printf("\n\r");
 
-    am_bsp_uart_printf_disable();
+//    am_bsp_uart_printf_disable();
 }
 
 void application_task(void *pvParameters)
@@ -220,7 +220,7 @@ void application_task(void *pvParameters)
     am_bsp_buffered_uart_printf_enable();
     am_util_stdio_printf("\n\rLoRaWAN Activity Tracker\n\r");
     am_util_stdio_printf("Press button to display measurement\n\r\n\r");
-    am_bsp_uart_printf_disable();
+//    am_bsp_uart_printf_disable();
 
     application_task_queue = xQueueCreate(10, sizeof(task_message_t));
 
