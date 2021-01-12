@@ -53,6 +53,8 @@
 TaskHandle_t  lorawan_task_handle;
 QueueHandle_t lorawan_task_queue;
 
+static QueueHandle_t lorawan_transmit_queue;
+
 static uint8_t AppDataBuffer[LORAWAN_APP_DATA_BUFFER_MAX_SIZE];
 
 static volatile uint8_t IsMacProcessPending = 0;
@@ -62,6 +64,8 @@ static LmHandlerCallbacks_t   LmHandlerCallbacks;
 static LmHandlerParams_t      LmHandlerParams;
 static LmhpComplianceParams_t LmhpComplianceParams;
 static LmHandlerAppData_t     LmHandlerAppData;
+
+static void UplinkProcess(void);
 
 static void OnMacProcessNotify(void);
 static void OnNvmDataChange(LmHandlerNvmContextStates_t state, uint16_t size);
@@ -90,6 +94,11 @@ void BoardGetUniqueId(uint8_t *id)
     id[5] = (uint8_t)(i.sMcuCtrlDevice.ui32ChipID0 >> 8);
     id[6] = (uint8_t)(i.sMcuCtrlDevice.ui32ChipID0 >> 16);
     id[7] = (uint8_t)(i.sMcuCtrlDevice.ui32ChipID0 >> 24);
+}
+
+void lorawan_send(lorawan_transaction_t *transaction)
+{
+    xQueueSend(lorawan_transmit_queue, transaction, portMAX_DELAY);
 }
 
 void lorawan_setup()
@@ -137,11 +146,15 @@ void lorawan_setup()
 void lorawan_task(void *pvParameters)
 {
     lorawan_task_queue = xQueueCreate(10, sizeof(task_message_t));
+    lorawan_transmit_queue = xQueueCreate(10, sizeof(lorawan_transaction_t));
 
     lorawan_setup();
 
+    LmHandlerJoin();
     while (1) {
         LmHandlerProcess();
+        UplinkProcess();
+
         if (IsMacProcessPending) {
             IsMacProcessPending = 0;
         }
@@ -229,4 +242,25 @@ static void OnBeaconStatusChange(LoRaMAcHandlerBeaconParams_t *params)
 
 static void OnSysTimeUpdate(bool isSynchronized, int32_t timeCorrection)
 {
+}
+
+static void UplinkProcess(void)
+{
+    lorawan_transaction_t transaction;
+    if (xQueuePeek(lorawan_transmit_queue, &transaction, 0) == pdPASS)
+    {
+        if (LmHandlerIsBusy() == true)
+        {
+            return;
+        }
+
+        if (xQueueReceive(lorawan_transmit_queue, &transaction, 0) == pdPASS)
+        {
+            LmHandlerAppData.Port = transaction.port;
+            LmHandlerAppData.BufferSize = transaction.length;
+            LmHandlerAppData.Buffer = transaction.buffer;
+
+            LmHandlerSend(&LmHandlerAppData, transaction.message_type);
+        }
+    }
 }

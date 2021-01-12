@@ -41,6 +41,8 @@
 #include <queue.h>
 
 #include "application.h"
+#include "lorawan.h"
+#include "lorawan_config.h"
 #include "console_task.h"
 #include "gas.h"
 #include "imu.h"
@@ -59,12 +61,22 @@
 #define APPLICATION_LED_PERIOD       32 * 5
 #define APPLICATION_LED_ON_TIME      1
 
+#define APPLICATION_REPORTING_TIMER         1
+#define APPLICATION_REPORTING_TIMER_SEG     AM_HAL_CTIMER_TIMERA
+#define APPLICATION_REPORTING_TIMER_SOURCE  AM_HAL_CTIMER_LFRC_32HZ
+#define APPLICATION_REPORTING_TIMER_INT     AM_HAL_CTIMER_INT_TIMERA1C0
+#define APPLICATION_REPORTING_PERIOD        32 * 300
+
 TaskHandle_t  application_task_handle;
 QueueHandle_t application_task_queue;
+
+#define UPLOAD_BUFFER_MAX_LENGTH 32
+static uint8_t  application_upload_buffer[UPLOAD_BUFFER_MAX_LENGTH];
 
 static void *   adc_handle;
 static uint16_t adc_battery_code;
 static uint16_t adc_temperature_code;
+static uint32_t last_reported_steps, incremental_steps;
 
 static float battery_voltage;
 static float temperature;
@@ -82,6 +94,7 @@ const static am_hal_adc_config_t adc_cfg = {
 
 static void application_button_handler(void);
 static void application_timer_isr(void);
+static void application_reporting_timer_isr(void);
 
 static void application_adc_init()
 {
@@ -168,9 +181,23 @@ static void application_timer_setup()
                                application_timer_isr);
     am_hal_ctimer_int_clear(APPLICATION_LED_TIMER_INT);
     am_hal_ctimer_int_enable(APPLICATION_LED_TIMER_INT);
-    NVIC_EnableIRQ(CTIMER_IRQn);
 
+    am_hal_ctimer_config_single(
+            APPLICATION_REPORTING_TIMER, APPLICATION_REPORTING_TIMER_SEG,
+            (AM_HAL_CTIMER_FN_REPEAT | APPLICATION_REPORTING_TIMER_SOURCE |
+             AM_HAL_CTIMER_INT_ENABLE));
+
+    am_hal_ctimer_period_set(APPLICATION_REPORTING_TIMER, APPLICATION_REPORTING_TIMER_SEG,
+                             APPLICATION_REPORTING_PERIOD, 1);
+    am_hal_ctimer_int_register(APPLICATION_REPORTING_TIMER_INT,
+                               application_reporting_timer_isr);
+    am_hal_ctimer_int_clear(APPLICATION_REPORTING_TIMER_INT);
+    am_hal_ctimer_int_enable(APPLICATION_REPORTING_TIMER_INT);
+
+
+    NVIC_EnableIRQ(CTIMER_IRQn);
     am_hal_ctimer_start(APPLICATION_LED_TIMER, APPLICATION_LED_TIMER_SEG);
+    am_hal_ctimer_start(APPLICATION_REPORTING_TIMER, APPLICATION_REPORTING_TIMER_SEG);
 }
 
 static void application_adc_convert_sample()
@@ -200,7 +227,7 @@ void application_display_measurement()
 
 void application_report()
 {
-	am_bsp_buffered_uart_printf_enable();
+//	am_bsp_buffered_uart_printf_enable();
 
 	am_util_stdio_printf("\n\r\n\r");
     application_display_measurement();
@@ -215,11 +242,13 @@ void application_report()
 
 void application_task(void *pvParameters)
 {
+    lorawan_transaction_t transaction;
     task_message_t task_message;
 
     am_bsp_buffered_uart_printf_enable();
     am_util_stdio_printf("\n\rLoRaWAN Activity Tracker\n\r");
     am_util_stdio_printf("Press button to display measurement\n\r\n\r");
+    nm_console_print_prompt();
 //    am_bsp_uart_printf_disable();
 
     application_task_queue = xQueueCreate(10, sizeof(task_message_t));
@@ -228,6 +257,8 @@ void application_task(void *pvParameters)
     application_button_setup();
     application_timer_setup();
 
+    last_reported_steps = 0;
+    incremental_steps = 0;
     while (1) {
         if (xQueueReceive(application_task_queue, &task_message,
                           portMAX_DELAY) == pdPASS) {
@@ -242,6 +273,26 @@ void application_task(void *pvParameters)
                 vTaskDelay(DEBOUNCE_DELAY);
                 am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
                 am_hal_gpio_interrupt_enable(AM_HAL_GPIO_BIT(AM_BSP_GPIO_BUTTON0));
+                break;
+
+            case APPLICATION_EVENT_UPLOAD:
+                incremental_steps = imu_get_steps() - last_reported_steps;
+                last_reported_steps = incremental_steps;
+
+                memcpy(application_upload_buffer,
+                        &adc_battery_code, 2);
+
+                memcpy(application_upload_buffer + 2,
+                        &adc_temperature_code, 2);
+
+                memcpy(application_upload_buffer + 4,
+                        &incremental_steps, 4);
+
+                transaction.message_type = LORAMAC_HANDLER_UNCONFIRMED_MSG;
+                transaction.length = 8;
+                transaction.buffer = application_upload_buffer;
+                transaction.port = LORAWAN_APP_PORT;
+                lorawan_send(&transaction);
                 break;
             }
         }
@@ -263,6 +314,16 @@ void application_timer_isr()
 {
 	application_adc_init();
     am_hal_adc_sw_trigger(adc_handle);
+}
+
+void application_reporting_timer_isr()
+{
+    portBASE_TYPE  xHigherPriorityTaskWoken = pdFALSE;
+    task_message_t task_message;
+
+	task_message.ui32Event = APPLICATION_EVENT_UPLOAD;
+	xQueueSendFromISR(application_task_queue, &task_message,
+					  &xHigherPriorityTaskWoken);
 }
 
 void am_adc_isr()

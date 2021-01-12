@@ -34,6 +34,7 @@
 
 #define APPLICATION_EVENT_ADC_CNVCMP  0x01
 #define APPLICATION_EVENT_REPORT      0x02
+#define APPLICATION_EVENT_UPLOAD      0x03
 
 extern TaskHandle_t application_task_handle;
 extern QueueHandle_t application_task_queue;

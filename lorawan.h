@@ -36,10 +36,17 @@
 #include <LmHandler.h>
 #include <queue.h>
 
-typedef enum { JOIN = 0, RESET, SEND } lorawan_command_e;
+typedef struct {
+    LmHandlerMsgTypes_t  message_type;
+    size_t               length; 
+    uint8_t             *buffer;
+    uint8_t              port;
+} lorawan_transaction_t;
 
 extern TaskHandle_t lorawan_task_handle;
 extern QueueHandle_t lorawan_task_queue;
+
 extern void lorawan_task(void *pvParameters);
+extern void lorawan_send(lorawan_transaction_t *transaction);
 
 #endif /* _LORAWAN_H_ */

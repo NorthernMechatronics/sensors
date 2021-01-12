@@ -81,6 +81,11 @@ static int8_t set_feature_config(struct bmi2_dev *bmi2_dev)
     return rslt;
 }
 
+uint32_t imu_get_steps()
+{
+    return total_steps;
+}
+
 void imu_report()
 {
     am_util_stdio_printf("Steps Counted:  %d\n\r", total_steps);
