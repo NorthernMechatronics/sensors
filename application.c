@@ -65,7 +65,7 @@
 #define APPLICATION_REPORTING_TIMER_SEG     AM_HAL_CTIMER_TIMERA
 #define APPLICATION_REPORTING_TIMER_SOURCE  AM_HAL_CTIMER_LFRC_32HZ
 #define APPLICATION_REPORTING_TIMER_INT     AM_HAL_CTIMER_INT_TIMERA1C0
-#define APPLICATION_REPORTING_PERIOD        32 * 300
+#define APPLICATION_REPORTING_PERIOD        32 * 30
 
 TaskHandle_t  application_task_handle;
 QueueHandle_t application_task_queue;
@@ -277,19 +277,19 @@ void application_task(void *pvParameters)
 
             case APPLICATION_EVENT_UPLOAD:
                 incremental_steps = imu_get_steps() - last_reported_steps;
-                last_reported_steps = incremental_steps;
+                last_reported_steps = imu_get_steps();
 
-                memcpy(application_upload_buffer,
-                        &adc_battery_code, 2);
+                memcpy(&application_upload_buffer[0],
+                        &battery_voltage, sizeof(float));
 
-                memcpy(application_upload_buffer + 2,
-                        &adc_temperature_code, 2);
+                memcpy(&application_upload_buffer[4],
+                        &temperature, sizeof(float));
 
-                memcpy(application_upload_buffer + 4,
-                        &incremental_steps, 4);
+                memcpy(&application_upload_buffer[8],
+                        &incremental_steps, sizeof(uint32_t));
 
                 transaction.message_type = LORAMAC_HANDLER_UNCONFIRMED_MSG;
-                transaction.length = 8;
+                transaction.length = 2 * sizeof(float) + sizeof(uint32_t);
                 transaction.buffer = application_upload_buffer;
                 transaction.port = LORAWAN_APP_PORT;
                 lorawan_send(&transaction);

@@ -55,7 +55,7 @@ QueueHandle_t lorawan_task_queue;
 
 static QueueHandle_t lorawan_transmit_queue;
 
-static uint8_t AppDataBuffer[LORAWAN_APP_DATA_BUFFER_MAX_SIZE];
+uint8_t AppDataBuffer[LORAWAN_APP_DATA_BUFFER_MAX_SIZE];
 
 static volatile uint8_t IsMacProcessPending = 0;
 static volatile uint8_t IsTxFramePending    = 0;

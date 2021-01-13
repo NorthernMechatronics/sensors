@@ -38,7 +38,7 @@
 
 typedef struct {
     LmHandlerMsgTypes_t  message_type;
-    size_t               length; 
+    uint32_t             length; 
     uint8_t             *buffer;
     uint8_t              port;
 } lorawan_transaction_t;
